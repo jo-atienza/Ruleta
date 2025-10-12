@@ -3,9 +3,13 @@ import java.util.ArrayList;
 import java.util.Random;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Representa el tablero, la distribución de casillas y la lógica del giro/pago.
+ * Implementación con asignación de colores por listas de números fijos.
  */
 public class MesaRuleta {
     private final List<Casilla> casillas;
@@ -18,44 +22,73 @@ public class MesaRuleta {
     }
 
     /**
-     * Implementa la distribución exacta de las 50 casillas: 2V, 12R, 12N, 12A, 12B.
-     * Asignación: Verde en 25 y 50. Los demás se rotan en orden.
+     * Implementa la distribución por listas de colores para las 50 casillas.
      */
     private void inicializarTablero() {
-        String[] coloresBase = {"Rojo", "Negro", "Azul", "Blanco"};
-        int colorIndex = 0;
+        this.casillas.clear();
 
+        // --- 1. Definición de la secuencia y números a asignar ---
+
+        // Colores base (R, N, A, B)
+        String[] nombresColoresBase = {"Rojo", "Negro", "Azul", "Blanco"};
+
+        // Números fijos Verde
+        List<Integer> numerosVerdes = Arrays.asList(25, 50);
+
+        // Lista de números que NO son Verdes (48 números)
+        List<Integer> numerosBase = new ArrayList<>();
         for (int i = 1; i <= 50; i++) {
-            String color;
-
-            if (i == 25 || i == 50) {
-                color = "Verde";
-            } else {
-                color = coloresBase[colorIndex % coloresBase.length];
-                colorIndex++;
+            if (!numerosVerdes.contains(i)) {
+                numerosBase.add(i);
             }
-            this.casillas.add(new Casilla(i, color));
         }
+
+        // Mapa para guardar la asignación final de color por número
+        Map<Integer, String> asignacionFinal = new HashMap<>();
+
+        // --- 2. Asignación de colores ---
+
+        // a) Asignar los números Verdes fijos
+        asignacionFinal.put(25, "Verde");
+        asignacionFinal.put(50, "Verde");
+
+        // b) Asignar los 48 números base secuencialmente
+        int colorIndex = 0;
+        for (int i = 0; i < numerosBase.size(); i++) {
+            int num = numerosBase.get(i);
+            // El colorIndex se incrementa en cada iteración para garantizar la secuencia R, N, A, B.
+            String color = nombresColoresBase[colorIndex % nombresColoresBase.length];
+            asignacionFinal.put(num, color);
+            colorIndex++;
+        }
+
+        // 3. Construir la lista final de casillas en orden numérico (1 a 50)
+        for (int i = 1; i <= 50; i++) {
+            this.casillas.add(new Casilla(i, asignacionFinal.get(i)));
+        }
+    }
+
+    // El resto de los métodos se mantienen igual (getCasillas, tirarPelotas, calcularGanancia)
+
+    /**
+     * Getter necesario para que RuletaPanel pueda dibujar.
+     */
+    public List<Casilla> getCasillas() {
+        return casillas;
     }
 
     /**
      * Simula el lanzamiento de las dos pelotas.
-     * @return Array de las 2 casillas donde cayeron las pelotas.
      */
     public Casilla[] tirarPelotas() {
         Casilla[] resultados = new Casilla[2];
-        // Selecciona dos índices aleatorios entre 0 y 49 (50 casillas).
         resultados[0] = casillas.get(random.nextInt(casillas.size()));
         resultados[1] = casillas.get(random.nextInt(casillas.size()));
         return resultados;
     }
 
     /**
-     * Calcula la ganancia basada en la apuesta y el resultado del giro.
-     * @param apuesta La apuesta realizada.
-     * @param resultados El array de 2 casillas donde cayeron las pelotas.
-     * @return Monto total de la ganancia (0 si pierde)
-     * Nota: El valor devuelto incluye la apuesta inicial (monto * (1 + multiplicadorBase)).
+     * Calcula la ganancia total (monto apostado + ganancia neta).
      */
     public double calcularGanancia(Apuesta apuesta, Casilla[] resultados) throws TipoApuestaInvalidoException {
         double multiplicadorBase = 0.0;
@@ -63,12 +96,10 @@ public class MesaRuleta {
         final Casilla r1 = resultados[0];
         final Casilla r2 = resultados[1];
 
-        // Determinar si aplica la Sorpresa Verde
         boolean hayVerde = r1.getColor().equals("Verde") || r2.getColor().equals("Verde");
 
-        // 1. Determinar el multiplicador base según el tipo de apuesta
         switch (apuesta.getTipo()) {
-            case "Numero Especifico": // Pago 35x
+            case "Numero Especifico":
                 if (apuesta.getValor() instanceof Integer) {
                     int numApostado = (int) apuesta.getValor();
                     if (r1.getNumero() == numApostado || r2.getNumero() == numApostado) {
@@ -78,8 +109,7 @@ public class MesaRuleta {
                     throw new TipoApuestaInvalidoException("Apuesta de Número Específico requiere un valor Integer.");
                 }
                 break;
-
-            case "Par / Impar": // Pago 1x
+            case "Par / Impar":
                 if (apuesta.getValor() instanceof String) {
                     String condicion = (String) apuesta.getValor();
                     boolean r1Match = (r1.getNumero() % 2 == 0 && condicion.equals("Par")) || (r1.getNumero() % 2 != 0 && condicion.equals("Impar"));
@@ -89,8 +119,7 @@ public class MesaRuleta {
                     }
                 }
                 break;
-
-            case "Color Clasico": // Pago 1x
+            case "Color Clasico":
                 if (apuesta.getValor() instanceof String) {
                     String colorApostado = (String) apuesta.getValor();
                     if (r1.getColor().equals(colorApostado) || r2.getColor().equals(colorApostado)) {
@@ -100,8 +129,7 @@ public class MesaRuleta {
                     throw new TipoApuestaInvalidoException("Apuesta de Color requiere un valor String.");
                 }
                 break;
-
-            case "Color Cualquiera": // Pago 2x
+            case "Color Cualquiera":
                 if (apuesta.getValor() instanceof String) {
                     String colorApostado = (String) apuesta.getValor();
                     if (r1.getColor().equals(colorApostado) || r2.getColor().equals(colorApostado)) {
@@ -109,8 +137,7 @@ public class MesaRuleta {
                     }
                 }
                 break;
-
-            case "Color Unico": // Pago 5x
+            case "Color Unico":
                 if (apuesta.getValor() instanceof String) {
                     String colorApostado = (String) apuesta.getValor();
                     if (r1.getColor().equals(colorApostado) && r2.getColor().equals(colorApostado)) {
@@ -118,15 +145,12 @@ public class MesaRuleta {
                     }
                 }
                 break;
-
-            case "Color Mixto": // Pago 3x
-                // Asumimos que el valor es una lista [Color1, Color2]
+            case "Color Mixto":
                 if (apuesta.getValor() instanceof List) {
                     List<String> coloresApostados = (List<String>) apuesta.getValor();
                     List<String> coloresResultado = Arrays.asList(r1.getColor(), r2.getColor());
 
                     if (coloresApostados.size() == 2 && coloresResultado.size() == 2) {
-                        // Ordenamos para comparar, ignorando el orden
                         Collections.sort(coloresApostados);
                         Collections.sort(coloresResultado);
 
@@ -136,39 +160,30 @@ public class MesaRuleta {
                     }
                 }
                 break;
-
-            case "Doble Coincidencia": // Pago 8x
-                // Asumimos que el valor es una lista [Color1, Color2] en ORDEN
+            case "Doble Coincidencia":
                 if (apuesta.getValor() instanceof List) {
                     List<String> coloresApostados = (List<String>) apuesta.getValor();
                     if (coloresApostados.size() == 2) {
                         String color1 = coloresApostados.get(0);
                         String color2 = coloresApostados.get(1);
 
-                        // Coincidencia de orden: r1 debe ser Color1, r2 debe ser Color2
                         if (r1.getColor().equals(color1) && r2.getColor().equals(color2)) {
                             multiplicadorBase = 8.0;
                         }
                     }
                 }
                 break;
-
-            // Faltan casos para Calle/Línea y Docena/Rango, que requieren lógica adicional de números
             case "Calle o Linea (3 nums)":
             case "Docena o Rango (12 nums)":
-                // Se dejan en 0.0 por no tener la implementación de rangos numéricos
                 break;
-
             default:
                 break;
         }
 
-        // 2. Aplicar la Sorpresa Verde
         if (multiplicadorBase > 0.0 && hayVerde) {
             multiplicadorBase *= 2;
         }
 
-        // Devolvemos el monto total (apuesta inicial + ganancia neta)
         return apuesta.getMonto() * (1.0 + multiplicadorBase);
     }
 }
