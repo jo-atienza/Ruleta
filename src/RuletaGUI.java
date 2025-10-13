@@ -3,27 +3,30 @@ import java.awt.*;
 import java.util.Arrays;
 import java.util.List;
 
-public class RuletaGUI extends JFrame {
-    // --- Modelos y Lógica ---
-    private final Jugador jugador;
-    private final MesaRuleta mesaRuleta;
+// Implementamos la interfaz para que el panel nos pueda notificar
+public class RuletaGUI extends JFrame implements GiroListener {
 
-    // --- Componentes Swing ---
-    private final JLabel lblSaldo;
+    // --- ¡ESTAS SON LAS LÍNEAS QUE FALTABAN! ---
+    // Componentes de la UI
+    private final JButton btnGirar;
     private final JTextField txtMonto;
     private final JTextField txtApuestaValor;
     private final JComboBox<String> cmbApuestaTipo;
     private final JTextArea txtResultados;
-    private final JButton btnGirar;
+    private final JLabel lblSaldo;
+
+    // Lógica del Juego
     private final RuletaPanel ruletaPanel;
-    private final Timer timer; // Timer para la animación de giro
+    private final MesaRuleta mesaRuleta;
+    private final Jugador jugador;
+    // ------------------------------------------------
 
     public RuletaGUI() {
-        // Inicialización del Modelo
+        // --- Inicialización del Modelo ---
         this.jugador = new Jugador(1000.0);
         this.mesaRuleta = new MesaRuleta();
 
-        // Configuración de la Ventana
+        // --- Configuración de la Ventana ---
         setTitle("Ruleta Arcoíris 2-Pelotas");
         setSize(950, 750);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -40,20 +43,19 @@ public class RuletaGUI extends JFrame {
                 "Doble Coincidencia",
                 "Numero Especifico",
                 "Par / Impar",
-                "Color Clasico",
-                "Calle o Linea (3 nums)",
-                "Docena o Rango (12 nums)"
+                "Color Clasico"
         });
         txtResultados = new JTextArea(15, 60);
         txtResultados.setEditable(false);
         btnGirar = new JButton("¡APOSTAR Y GIRAR!");
 
         ruletaPanel = new RuletaPanel(mesaRuleta);
+        // ¡Importante! Registramos la GUI para que el panel le pueda notificar
+        ruletaPanel.setGiroListener(this);
 
         // --- Panel de Control (Norte) ---
         JPanel pnlControl = new JPanel();
         pnlControl.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 10));
-
         pnlControl.add(lblSaldo);
         pnlControl.add(new JLabel("Tipo:"));
         pnlControl.add(cmbApuestaTipo);
@@ -78,47 +80,27 @@ public class RuletaGUI extends JFrame {
         add(pnlTablero, BorderLayout.CENTER);
         add(pnlResultados, BorderLayout.SOUTH);
 
-        // Inicialización del Timer de animación (50ms = 20 FPS)
-        this.timer = new Timer(50, e -> ruletaPanel.avanzarGiro());
-
         // Registrar Event Listener
-        btnGirar.addActionListener(e -> intentarGiro());
+        btnGirar.addActionListener(e -> procesarApuestaYGirar());
 
         // Finalizar y mostrar
         setLocationRelativeTo(null);
     }
 
-    /**
-     * Inicia el proceso de apuesta, manejo de excepciones y la animación de giro.
-     */
-    private void intentarGiro() {
+    private void procesarApuestaYGirar() {
         btnGirar.setEnabled(false);
-
         try {
-            // 1. Obtener y validar la entrada
+            // FASE 1: Validar y cobrar la apuesta
             double monto = Double.parseDouble(txtMonto.getText().trim());
             String tipo = (String) cmbApuestaTipo.getSelectedItem();
             Object valor = obtenerValorApuesta(tipo, txtApuestaValor.getText().trim());
 
-            // 2. Crear y validar la Apuesta
             Apuesta apuesta = new Apuesta(monto, tipo, valor);
-
-            // 3. Descontar del Saldo (Se descuenta antes del giro.)
             jugador.apostar(monto);
             actualizarSaldo();
 
-            // 4. Iniciar la Animación
-            ruletaPanel.setResultados(new Casilla[2]);
-            ruletaPanel.setIsGirando(true);
-            timer.start();
-
-            // 5. Usar un SEGUNDO Timer para detener la animación y calcular resultados
-            Timer detencionTimer = new Timer(3000, e -> {
-                ((Timer)e.getSource()).stop();
-                finalizarGiro(apuesta);
-            });
-            detencionTimer.setRepeats(false);
-            detencionTimer.start();
+            // FASE 2: Simplemente iniciar la animación
+            ruletaPanel.iniciarGiro();
 
         } catch (NumberFormatException ex) {
             mostrarError("Error de Entrada", "El monto de apuesta debe ser un número válido.");
@@ -126,39 +108,32 @@ public class RuletaGUI extends JFrame {
         } catch (MontoApuestaInvalidoException | SaldoInsuficienteException | TipoApuestaInvalidoException ex) {
             mostrarError("Error de Apuesta/Saldo", ex.getMessage());
             btnGirar.setEnabled(true);
-        } catch (Exception ex) {
-            mostrarError("Error Desconocido", "Ocurrió un error: " + ex.toString());
-            btnGirar.setEnabled(true);
         }
     }
 
-    /**
-     * Lógica que se ejecuta después de que termina la animación de giro.
-     */
-    private void finalizarGiro(Apuesta apuesta) {
-        timer.stop();
-        ruletaPanel.setIsGirando(false);
-
+    @Override
+    public void giroTerminado(Casilla[] resultados) {
+        // La animación terminó, ahora procesamos el resultado
         try {
-            // 1. Cálculo de Resultados
-            Casilla[] resultados = mesaRuleta.tirarPelotas();
+            double monto = Double.parseDouble(txtMonto.getText().trim());
+            String tipo = (String) cmbApuestaTipo.getSelectedItem();
+            Object valor = obtenerValorApuesta(tipo, txtApuestaValor.getText().trim());
+            Apuesta apuesta = new Apuesta(monto, tipo, valor);
+
             double ganancia = mesaRuleta.calcularGanancia(apuesta, resultados);
-
-            // 2. Integración visual y pago
-            ruletaPanel.setResultados(resultados);
-
             String msgResultado = generarMensajeResultado(apuesta, resultados, ganancia);
             txtResultados.append(msgResultado + "\n");
 
-            if (ganancia > apuesta.getMonto()) {
+            if (ganancia > 0) {
                 jugador.cobrar(ganancia);
             }
 
             actualizarSaldo();
-            btnGirar.setEnabled(true);
 
         } catch (Exception ex) {
             mostrarError("Error de Cálculo", "Error al procesar el resultado: " + ex.getMessage());
+        } finally {
+            // Reactivar el botón para la siguiente ronda
             btnGirar.setEnabled(true);
         }
     }
@@ -169,7 +144,6 @@ public class RuletaGUI extends JFrame {
         if (textoValor.isEmpty() && !tipo.equals("Par / Impar")) {
             throw new TipoApuestaInvalidoException("El campo 'Valor' no puede estar vacío para esta apuesta.");
         }
-
         if (tipo.equals("Numero Especifico")) {
             try {
                 return Integer.parseInt(textoValor);
@@ -177,7 +151,6 @@ public class RuletaGUI extends JFrame {
                 throw new TipoApuestaInvalidoException("Para 'Número Específico', el valor debe ser un número entero (1-50).");
             }
         }
-
         if (tipo.equals("Doble Coincidencia") || tipo.equals("Color Mixto")) {
             String[] partes = textoValor.split(",");
             if (partes.length != 2) {
@@ -185,7 +158,6 @@ public class RuletaGUI extends JFrame {
             }
             return Arrays.asList(partes[0].trim(), partes[1].trim());
         }
-
         return textoValor;
     }
 
@@ -193,22 +165,22 @@ public class RuletaGUI extends JFrame {
         String msg = "Giro: " + resultados[0] + " y " + resultados[1] + ". ";
         double gananciaNeta = gananciaTotal - apuesta.getMonto();
 
-        if (gananciaNeta > 0) {
+        if (gananciaNeta >= 0 && gananciaTotal > 0) {
             msg += "¡GANASTE! Ganancia Neta: $" + String.format("%.2f", gananciaNeta) + ".";
         } else {
             msg += "Perdiste.";
         }
-
         if (resultados[0].getColor().equals("Verde") || resultados[1].getColor().equals("Verde")) {
             msg += " **¡SORPRESA VERDE ACTIVADA!**";
         }
-
         return msg;
     }
 
     private void actualizarSaldo() {
         lblSaldo.setText("Saldo: $" + String.format("%.2f", jugador.getSaldo()));
     }
+
+
 
     private void mostrarError(String titulo, String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, titulo, JOptionPane.ERROR_MESSAGE);

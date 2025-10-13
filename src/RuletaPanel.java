@@ -5,174 +5,182 @@ import java.util.List;
 
 public class RuletaPanel extends JPanel {
     private final MesaRuleta mesa;
+    private GiroListener listener;
 
-    // --- Variables de Estado para la Animación (Reintegradas) ---
-    private Casilla[] resultados = new Casilla[2];
-    private double anguloRotacion = 0;
-    private boolean isGirando = false;
-    // -------------------------------------------------------------
+    // --- Variables de Física y Estado ---
+    private double anguloRueda, anguloPelota1, anguloPelota2;
+    private double velocidadRueda, velocidadPelota1, velocidadPelota2;
+    private boolean pelota1Parada = false, pelota2Parada = false, ruedaParada = false;
+    private Timer animationTimer;
+    private Casilla[] resultados = null; // Guardamos los resultados para dibujarlos al final
+
+    // --- Colores ---
+    private static final Color ROJO = new Color(200, 50, 50);
+    private static final Color NEGRO = Color.BLACK;
+    private static final Color AZUL = new Color(50, 50, 200);
+    private static final Color BLANCO = Color.WHITE;
+    private static final Color VERDE = new Color(50, 150, 50);
 
     public RuletaPanel(MesaRuleta mesa) {
         this.mesa = mesa;
-        setPreferredSize(new Dimension(600, 600)); // Mantengo tu tamaño
+        setPreferredSize(new Dimension(600, 600));
         setBackground(new Color(200, 200, 200));
     }
 
-    // --- Métodos de Animación (Requeridos por RuletaGUI) ---
+    public void setGiroListener(GiroListener listener) {
+        this.listener = listener;
+    }
 
-    public void setResultados(Casilla[] res) {
-        this.resultados = res;
-        if (!isGirando) {
-            repaint();
+    public void iniciarGiro() {
+        this.resultados = null; // Limpia los resultados de la jugada anterior
+        pelota1Parada = false;
+        pelota2Parada = false;
+        ruedaParada = false;
+
+        velocidadRueda = 15.0 + (Math.random() * 5);
+        velocidadPelota1 = -22.0 - (Math.random() * 5);
+        velocidadPelota2 = -24.0 - (Math.random() * 5);
+
+        if (animationTimer != null && animationTimer.isRunning()) {
+            animationTimer.stop();
+        }
+        animationTimer = new Timer(16, e -> actualizarFrame());
+        animationTimer.start();
+    }
+
+    private void actualizarFrame() {
+        anguloRueda = (anguloRueda + velocidadRueda) % 360;
+        anguloPelota1 = (anguloPelota1 + velocidadPelota1) % 360;
+        anguloPelota2 = (anguloPelota2 + velocidadPelota2) % 360;
+
+        // Fricción aumentada para un giro más corto
+        velocidadRueda *= 0.99;
+        velocidadPelota1 *= 0.985;
+        velocidadPelota2 *= 0.988;
+
+        if (Math.abs(velocidadRueda) < 0.01) { ruedaParada = true; velocidadRueda = 0; }
+        if (Math.abs(velocidadPelota1) < 0.01) { pelota1Parada = true; velocidadPelota1 = 0; }
+        if (Math.abs(velocidadPelota2) < 0.01) { pelota2Parada = true; velocidadPelota2 = 0; }
+
+        repaint();
+
+        if (ruedaParada && pelota1Parada && pelota2Parada) {
+            animationTimer.stop();
+            determinarResultadosYNotificar();
         }
     }
 
-    public void setIsGirando(boolean girando) {
-        this.isGirando = girando;
-    }
+    private void determinarResultadosYNotificar() {
+        List<Casilla> casillas = mesa.getCasillas();
+        double anguloPorCasilla = 360.0 / casillas.size();
 
-    public void avanzarGiro() {
-        if (isGirando) {
-            // Lógica de avance de ángulo para la rotación visual
-            anguloRotacion += 10;
-            if (anguloRotacion >= 360) {
-                anguloRotacion -= 360;
-            }
-            repaint(); // Solicita el repintado
+        double anguloRelativoPelota1 = (anguloPelota1 - anguloRueda + 360) % 360;
+        double anguloRelativoPelota2 = (anguloPelota2 - anguloRueda + 360) % 360;
+
+        int indice1 = (int) (((anguloRelativoPelota1 + 270) % 360) / anguloPorCasilla);
+        int indice2 = (int) (((anguloRelativoPelota2 + 270) % 360) / anguloPorCasilla);
+
+        // Guardamos los resultados para dibujarlos y notificamos a la GUI
+        this.resultados = new Casilla[2];
+        this.resultados[0] = casillas.get(indice1);
+        this.resultados[1] = casillas.get(indice2);
+
+        repaint(); // Hacemos un último repintado para mostrar los números en el centro
+
+        if (listener != null) {
+            listener.giroTerminado(this.resultados);
         }
     }
-
-    // --- Lógica de Dibujo (Basada en tu versión simplificada) ---
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g.create();
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         int centroX = getWidth() / 2;
         int centroY = getHeight() / 2;
         int radioExterior = Math.min(getWidth(), getHeight()) / 2 - 40;
         int radioInterior = (int) (radioExterior * 0.55);
 
+        // --- Dibuja la RUEDA ---
+        Graphics2D g2dRueda = (Graphics2D) g2d.create();
+        g2dRueda.rotate(Math.toRadians(anguloRueda), centroX, centroY);
+
         List<Casilla> casillas = mesa.getCasillas();
-        double anguloCasilla = 360.0 / casillas.size();
+        double anguloCasillaD = 360.0 / casillas.size();
 
-        // Aplicar ROTACIÓN para la animación de giro
-        g2d.rotate(Math.toRadians(anguloRotacion), centroX, centroY);
-
-        // 🔁 Dibujo en sentido horario, corrigiendo desplazamiento
+        // --- LÓGICA DE DIBUJO ORIGINAL RESTAURADA ---
+        // Esta es la fórmula que dibujaba todos los números correctamente.
         for (int i = 0; i < casillas.size(); i++) {
             Casilla c = casillas.get(i);
-
-            // Calcula el ángulo de inicio y el color
-            double inicioAngulo = 360 - (i * anguloCasilla) - 90 - anguloCasilla;
+            double inicioAngulo = 360 - (i * anguloCasillaD) - 90 - anguloCasillaD;
             Color colorCasilla = getColorFromNombre(c.getColor());
-            g2d.setColor(colorCasilla);
+            g2dRueda.setColor(colorCasilla);
+            g2dRueda.fill(new Arc2D.Double(centroX - radioExterior, centroY - radioExterior, radioExterior * 2, radioExterior * 2, inicioAngulo, -anguloCasillaD, Arc2D.PIE));
 
-            g2d.fill(new Arc2D.Double(
-                    centroX - radioExterior, centroY - radioExterior,
-                    radioExterior * 2, radioExterior * 2,
-                    inicioAngulo, -anguloCasilla, Arc2D.PIE
-            ));
-
-            // 🔢 Dibujo del número (sin rotación compleja)
-            double anguloTexto = Math.toRadians(inicioAngulo - anguloCasilla / 2);
+            double anguloTexto = Math.toRadians(inicioAngulo - anguloCasillaD / 2);
             double radioTexto = (radioExterior + radioInterior) / 2.0;
-
             int xTexto = (int) (centroX + Math.cos(anguloTexto) * radioTexto);
             int yTexto = (int) (centroY - Math.sin(anguloTexto) * radioTexto);
 
             String texto = String.valueOf(c.getNumero());
-            g2d.setFont(new Font("Arial", Font.BOLD, 14));
-
-            // Contraste según color de fondo
-            if (c.getColor().equalsIgnoreCase("Negro") || c.getColor().equalsIgnoreCase("Azul")) {
-                g2d.setColor(Color.WHITE);
-            } else {
-                g2d.setColor(Color.BLACK);
-            }
-
-            // Centramos el texto
-            FontMetrics fm = g2d.getFontMetrics();
-            int textWidth = fm.stringWidth(texto);
-            int textHeight = fm.getAscent();
-
-            g2d.drawString(texto, xTexto - textWidth / 2, yTexto + textHeight / 3);
+            g2dRueda.setFont(new Font("Arial", Font.BOLD, 14));
+            g2dRueda.setColor(c.getColor().equalsIgnoreCase("Negro") || c.getColor().equalsIgnoreCase("Azul") ? Color.WHITE : Color.BLACK);
+            FontMetrics fm = g2dRueda.getFontMetrics();
+            g2dRueda.drawString(texto, xTexto - fm.stringWidth(texto) / 2, yTexto + fm.getAscent() / 3);
         }
+        g2dRueda.dispose();
+        // -----------------------------------------------
 
-        // Remover la rotación antes de dibujar elementos fijos (índice, centro, pelotas)
-        g2d.rotate(-Math.toRadians(anguloRotacion), centroX, centroY);
-
-        // 🟡 Flecha indicadora arriba (ESTÁTICA)
+        // --- Dibuja elementos FIJOS ---
         g2d.setColor(Color.YELLOW);
         Polygon flecha = new Polygon();
         flecha.addPoint(centroX, centroY - radioExterior - 10);
         flecha.addPoint(centroX - 10, centroY - radioExterior + 15);
         flecha.addPoint(centroX + 10, centroY - radioExterior + 15);
         g2d.fill(flecha);
-
-        // 🔘 Círculo interior
         g2d.setColor(getBackground());
-        g2d.fill(new Ellipse2D.Double(
-                centroX - radioInterior, centroY - radioInterior,
-                radioInterior * 2, radioInterior * 2
-        ));
+        g2d.fill(new Ellipse2D.Double(centroX - radioInterior, centroY - radioInterior, radioInterior * 2, radioInterior * 2));
 
-        // 🔴⚪ Dibujo de Pelotas y Resultados (Solo cuando NO está girando)
-        if (!isGirando && resultados[0] != null) {
+        // --- Dibuja las PELOTAS ---
+        double p1Rad = Math.toRadians(anguloPelota1);
+        double p2Rad = Math.toRadians(anguloPelota2);
+        int radioP1 = radioExterior - 18;
+        int radioP2 = radioExterior - 20;
 
-            // Lógica de Posicionamiento de Pelotas sobre la zona de caída (Flecha)
+        int p1X = (int) (centroX + radioP1 * Math.cos(p1Rad));
+        int p1Y = (int) (centroY + radioP1 * Math.sin(p1Rad));
+        g2d.setColor(Color.WHITE);
+        g2d.fillOval(p1X - 7, p1Y - 7, 14, 14);
 
-            // Índice de la casilla ganadora (para la posición de la pelota)
-            int idx1 = getCasillaIndex(resultados[0].getNumero(), casillas);
-            int idx2 = getCasillaIndex(resultados[1].getNumero(), casillas);
+        int p2X = (int) (centroX + radioP2 * Math.cos(p2Rad));
+        int p2Y = (int) (centroY + radioP2 * Math.sin(p2Rad));
+        g2d.setColor(Color.YELLOW);
+        g2d.fillOval(p2X - 7, p2Y - 7, 14, 14);
 
-            // Ángulo de la casilla 1 (se dibuja en el punto de la flecha)
-            double anguloCasilla1 = (idx1 * anguloCasilla) + anguloCasilla / 2;
-
-            // La ruleta no está rotando ahora, así que la posición final es 0 grados (arriba)
-
+        // --- CÓDIGO AÑADIDO PARA MOSTRAR NÚMEROS EN EL CENTRO ---
+        // Se dibuja solo cuando el giro ha terminado y hay resultados
+        if (!ruedaParada && resultados != null && resultados[0] != null) {
             String resStr = resultados[0].getNumero() + " | " + resultados[1].getNumero();
-            g2d.setFont(new Font("Arial", Font.BOLD, 18));
-
-            // Dibuja las pelotas en el centro (simplificado si no queremos mover la flecha)
-            g2d.setColor(Color.WHITE);
-            g2d.fillOval(centroX - 25, centroY - 10, 15, 15);
-            g2d.setColor(Color.YELLOW);
-            g2d.fillOval(centroX + 10, centroY + 5, 15, 15);
-
             g2d.setColor(Color.BLACK);
-            g2d.drawString(resStr, centroX - g2d.getFontMetrics().stringWidth(resStr) / 2, centroY + 5);
+            g2d.setFont(new Font("Arial", Font.BOLD, 20));
+            FontMetrics fm = g2d.getFontMetrics();
+            g2d.drawString(resStr, centroX - fm.stringWidth(resStr) / 2, centroY + 8);
         }
+        // -----------------------------------------------------------
 
         g2d.dispose();
     }
 
-    // --- Métodos Auxiliares ---
-
-    private int getCasillaIndex(int numero, List<Casilla> casillas) {
-        for (int i = 0; i < casillas.size(); i++) {
-            if (casillas.get(i).getNumero() == numero) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
     private Color getColorFromNombre(String nombre) {
         switch (nombre.toLowerCase()) {
-            case "rojo":
-                return Color.RED;
-            case "negro":
-                return Color.BLACK;
-            case "azul":
-                return new Color(0, 0, 180);
-            case "blanco":
-                return Color.WHITE;
-            case "verde":
-                return new Color(0, 140, 0); // Verde oscuro
-            default:
-                return Color.GRAY;
+            case "rojo": return ROJO;
+            case "negro": return NEGRO;
+            case "azul": return AZUL;
+            case "blanco": return BLANCO;
+            case "verde": return VERDE;
+            default: return Color.GRAY;
         }
     }
 }
