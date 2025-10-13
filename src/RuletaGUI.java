@@ -28,7 +28,7 @@ public class RuletaGUI extends JFrame implements GiroListener {
 
         // --- Configuración de la Ventana ---
         setTitle("Ruleta Arcoíris 2-Pelotas");
-        setSize(950, 750);
+        setSize(1100, 950);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
 

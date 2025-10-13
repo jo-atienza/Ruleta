@@ -23,7 +23,7 @@ public class RuletaPanel extends JPanel {
 
     public RuletaPanel(MesaRuleta mesa) {
         this.mesa = mesa;
-        setPreferredSize(new Dimension(600, 600));
+        setPreferredSize(new Dimension(850, 850));
         setBackground(new Color(200, 200, 200));
     }
 
@@ -100,8 +100,8 @@ public class RuletaPanel extends JPanel {
 
         int centroX = getWidth() / 2;
         int centroY = getHeight() / 2;
-        int radioExterior = Math.min(getWidth(), getHeight()) / 2 - 40;
-        int radioInterior = (int) (radioExterior * 0.55);
+        int radioExterior = Math.min(getWidth(), getHeight()) / 2 - 10;
+        int radioInterior = (int) (radioExterior * 0.30);
 
         // --- Dibuja la RUEDA ---
         Graphics2D g2dRueda = (Graphics2D) g2d.create();
@@ -120,12 +120,12 @@ public class RuletaPanel extends JPanel {
             g2dRueda.fill(new Arc2D.Double(centroX - radioExterior, centroY - radioExterior, radioExterior * 2, radioExterior * 2, inicioAngulo, -anguloCasillaD, Arc2D.PIE));
 
             double anguloTexto = Math.toRadians(inicioAngulo - anguloCasillaD / 2);
-            double radioTexto = (radioExterior + radioInterior) / 2.0;
+            double radioTexto = (radioExterior * 0.90) + (radioInterior * 0.10);
             int xTexto = (int) (centroX + Math.cos(anguloTexto) * radioTexto);
             int yTexto = (int) (centroY - Math.sin(anguloTexto) * radioTexto);
 
             String texto = String.valueOf(c.getNumero());
-            g2dRueda.setFont(new Font("Arial", Font.BOLD, 14));
+            g2dRueda.setFont(new Font("Arial", Font.BOLD, 18));
             g2dRueda.setColor(c.getColor().equalsIgnoreCase("Negro") || c.getColor().equalsIgnoreCase("Azul") ? Color.WHITE : Color.BLACK);
             FontMetrics fm = g2dRueda.getFontMetrics();
             g2dRueda.drawString(texto, xTexto - fm.stringWidth(texto) / 2, yTexto + fm.getAscent() / 3);
@@ -140,7 +140,7 @@ public class RuletaPanel extends JPanel {
         flecha.addPoint(centroX - 10, centroY - radioExterior + 15);
         flecha.addPoint(centroX + 10, centroY - radioExterior + 15);
         g2d.fill(flecha);
-        g2d.setColor(getBackground());
+        g2d.setColor(Color.DARK_GRAY);
         g2d.fill(new Ellipse2D.Double(centroX - radioInterior, centroY - radioInterior, radioInterior * 2, radioInterior * 2));
 
         // --- Dibuja las PELOTAS ---
@@ -163,8 +163,8 @@ public class RuletaPanel extends JPanel {
         // Se dibuja solo cuando el giro ha terminado y hay resultados
         if (!ruedaParada && resultados != null && resultados[0] != null) {
             String resStr = resultados[0].getNumero() + " | " + resultados[1].getNumero();
-            g2d.setColor(Color.BLACK);
-            g2d.setFont(new Font("Arial", Font.BOLD, 20));
+            g2d.setColor(Color.yellow);
+            g2d.setFont(new Font("Arial", Font.BOLD, 24));
             FontMetrics fm = g2d.getFontMetrics();
             g2d.drawString(resStr, centroX - fm.stringWidth(resStr) / 2, centroY + 8);
         }
