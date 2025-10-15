@@ -1,3 +1,5 @@
+package modelos;
+
 /**
  * Interfaz para notificar cuando la animación de la ruleta ha terminado.
  */

@@ -1,30 +1,32 @@
+import enums.Color;
+import modelos.Casilla;
+import modelos.GiroListener;
+import modelos.MesaRuleta;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.geom.*;
+import java.awt.geom.Arc2D;
+import java.awt.geom.Ellipse2D;
 import java.util.List;
 
 public class RuletaPanel extends JPanel {
     private final MesaRuleta mesa;
     private GiroListener listener;
-
-    // --- Variables de Física y Estado ---
     private double anguloRueda, anguloPelota1, anguloPelota2;
     private double velocidadRueda, velocidadPelota1, velocidadPelota2;
-    private boolean pelota1Parada = false, pelota2Parada = false, ruedaParada = false;
+    private boolean pelota1Parada, pelota2Parada, ruedaParada;
     private Timer animationTimer;
-    private Casilla[] resultados = null; // Guardamos los resultados para dibujarlos al final
+    private Casilla[] resultados = null;
 
-    // --- Colores ---
-    private static final Color ROJO = new Color(200, 50, 50);
-    private static final Color NEGRO = Color.BLACK;
-    private static final Color AZUL = new Color(50, 50, 200);
-    private static final Color BLANCO = Color.WHITE;
-    private static final Color VERDE = new Color(50, 150, 50);
+    private static final java.awt.Color ROJO_AWT = new java.awt.Color(241, 3, 3);
+    private static final java.awt.Color NEGRO_AWT = java.awt.Color.BLACK;
+    private static final java.awt.Color AZUL_AWT = new java.awt.Color(4, 4, 252);
+    private static final java.awt.Color BLANCO_AWT = java.awt.Color.WHITE;
+    private static final java.awt.Color VERDE_AWT = new java.awt.Color(54, 176, 54);
 
     public RuletaPanel(MesaRuleta mesa) {
         this.mesa = mesa;
         setPreferredSize(new Dimension(850, 850));
-        setBackground(new Color(200, 200, 200));
+        setBackground(new java.awt.Color(200, 200, 200));
     }
 
     public void setGiroListener(GiroListener listener) {
@@ -32,7 +34,7 @@ public class RuletaPanel extends JPanel {
     }
 
     public void iniciarGiro() {
-        this.resultados = null; // Limpia los resultados de la jugada anterior
+        this.resultados = null;
         pelota1Parada = false;
         pelota2Parada = false;
         ruedaParada = false;
@@ -53,7 +55,6 @@ public class RuletaPanel extends JPanel {
         anguloPelota1 = (anguloPelota1 + velocidadPelota1) % 360;
         anguloPelota2 = (anguloPelota2 + velocidadPelota2) % 360;
 
-        // Fricción aumentada para un giro más corto
         velocidadRueda *= 0.99;
         velocidadPelota1 *= 0.985;
         velocidadPelota2 *= 0.988;
@@ -73,19 +74,16 @@ public class RuletaPanel extends JPanel {
     private void determinarResultadosYNotificar() {
         List<Casilla> casillas = mesa.getCasillas();
         double anguloPorCasilla = 360.0 / casillas.size();
-
         double anguloRelativoPelota1 = (anguloPelota1 - anguloRueda + 360) % 360;
         double anguloRelativoPelota2 = (anguloPelota2 - anguloRueda + 360) % 360;
-
         int indice1 = (int) (((anguloRelativoPelota1 + 270) % 360) / anguloPorCasilla);
         int indice2 = (int) (((anguloRelativoPelota2 + 270) % 360) / anguloPorCasilla);
 
-        // Guardamos los resultados para dibujarlos y notificamos a la GUI
         this.resultados = new Casilla[2];
         this.resultados[0] = casillas.get(indice1);
         this.resultados[1] = casillas.get(indice2);
 
-        repaint(); // Hacemos un último repintado para mostrar los números en el centro
+        repaint();
 
         if (listener != null) {
             listener.giroTerminado(this.resultados);
@@ -103,19 +101,15 @@ public class RuletaPanel extends JPanel {
         int radioExterior = Math.min(getWidth(), getHeight()) / 2 - 10;
         int radioInterior = (int) (radioExterior * 0.30);
 
-        // --- Dibuja la RUEDA ---
         Graphics2D g2dRueda = (Graphics2D) g2d.create();
         g2dRueda.rotate(Math.toRadians(anguloRueda), centroX, centroY);
-
         List<Casilla> casillas = mesa.getCasillas();
         double anguloCasillaD = 360.0 / casillas.size();
 
-        // --- LÓGICA DE DIBUJO ORIGINAL RESTAURADA ---
-        // Esta es la fórmula que dibujaba todos los números correctamente.
         for (int i = 0; i < casillas.size(); i++) {
             Casilla c = casillas.get(i);
             double inicioAngulo = 360 - (i * anguloCasillaD) - 90 - anguloCasillaD;
-            Color colorCasilla = getColorFromNombre(c.getColor());
+            java.awt.Color colorCasilla = getAwtColor(c.getColor());
             g2dRueda.setColor(colorCasilla);
             g2dRueda.fill(new Arc2D.Double(centroX - radioExterior, centroY - radioExterior, radioExterior * 2, radioExterior * 2, inicioAngulo, -anguloCasillaD, Arc2D.PIE));
 
@@ -123,24 +117,21 @@ public class RuletaPanel extends JPanel {
             double radioTexto = (radioExterior * 0.90) + (radioInterior * 0.10);
             int xTexto = (int) (centroX + Math.cos(anguloTexto) * radioTexto);
             int yTexto = (int) (centroY - Math.sin(anguloTexto) * radioTexto);
-
             String texto = String.valueOf(c.getNumero());
             g2dRueda.setFont(new Font("Arial", Font.BOLD, 18));
-            g2dRueda.setColor(c.getColor().equalsIgnoreCase("Negro") || c.getColor().equalsIgnoreCase("Azul") ? Color.WHITE : Color.BLACK);
+            g2dRueda.setColor(c.getColor() == Color.NEGRO || c.getColor() == Color.AZUL ? java.awt.Color.WHITE : java.awt.Color.BLACK);
             FontMetrics fm = g2dRueda.getFontMetrics();
             g2dRueda.drawString(texto, xTexto - fm.stringWidth(texto) / 2, yTexto + fm.getAscent() / 3);
         }
         g2dRueda.dispose();
-        // -----------------------------------------------
 
-        // --- Dibuja elementos FIJOS ---
-        g2d.setColor(Color.YELLOW);
+        g2d.setColor(java.awt.Color.YELLOW);
         Polygon flecha = new Polygon();
         flecha.addPoint(centroX, centroY - radioExterior - 10);
         flecha.addPoint(centroX - 10, centroY - radioExterior + 15);
         flecha.addPoint(centroX + 10, centroY - radioExterior + 15);
         g2d.fill(flecha);
-        g2d.setColor(Color.DARK_GRAY);
+        g2d.setColor(java.awt.Color.DARK_GRAY);
         g2d.fill(new Ellipse2D.Double(centroX - radioInterior, centroY - radioInterior, radioInterior * 2, radioInterior * 2));
 
         // --- Dibuja las PELOTAS ---
@@ -151,36 +142,33 @@ public class RuletaPanel extends JPanel {
 
         int p1X = (int) (centroX + radioP1 * Math.cos(p1Rad));
         int p1Y = (int) (centroY + radioP1 * Math.sin(p1Rad));
-        g2d.setColor(Color.WHITE);
+        g2d.setColor(java.awt.Color.YELLOW); //
         g2d.fillOval(p1X - 7, p1Y - 7, 14, 14);
 
         int p2X = (int) (centroX + radioP2 * Math.cos(p2Rad));
         int p2Y = (int) (centroY + radioP2 * Math.sin(p2Rad));
-        g2d.setColor(Color.YELLOW);
+        g2d.setColor(java.awt.Color.YELLOW); //
         g2d.fillOval(p2X - 7, p2Y - 7, 14, 14);
 
-        // --- CÓDIGO AÑADIDO PARA MOSTRAR NÚMEROS EN EL CENTRO ---
-        // Se dibuja solo cuando el giro ha terminado y hay resultados
-        if (!ruedaParada && resultados != null && resultados[0] != null) {
+
+        if (ruedaParada && resultados != null && resultados[0] != null) {
             String resStr = resultados[0].getNumero() + " | " + resultados[1].getNumero();
-            g2d.setColor(Color.yellow);
+            g2d.setColor(java.awt.Color.YELLOW);
             g2d.setFont(new Font("Arial", Font.BOLD, 24));
             FontMetrics fm = g2d.getFontMetrics();
             g2d.drawString(resStr, centroX - fm.stringWidth(resStr) / 2, centroY + 8);
         }
-        // -----------------------------------------------------------
-
         g2d.dispose();
     }
 
-    private Color getColorFromNombre(String nombre) {
-        switch (nombre.toLowerCase()) {
-            case "rojo": return ROJO;
-            case "negro": return NEGRO;
-            case "azul": return AZUL;
-            case "blanco": return BLANCO;
-            case "verde": return VERDE;
-            default: return Color.GRAY;
+    private java.awt.Color getAwtColor(Color colorEnum) {
+        switch (colorEnum) {
+            case ROJO: return ROJO_AWT;
+            case NEGRO: return NEGRO_AWT;
+            case AZUL: return AZUL_AWT;
+            case BLANCO: return BLANCO_AWT;
+            case VERDE: return VERDE_AWT;
+            default: return java.awt.Color.GRAY;
         }
     }
 }

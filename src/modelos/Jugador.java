@@ -1,6 +1,7 @@
-/**
- * Representa al jugador y gestiona su saldo (lanza SaldoInsuficienteException).
- */
+package modelos;
+
+import excepciones.SaldoInsuficienteException;
+
 public class Jugador {
     private double saldo;
 
@@ -8,9 +9,6 @@ public class Jugador {
         this.saldo = saldoInicial;
     }
 
-    /**
-     * Descuenta el monto de la apuesta.
-     */
     public void apostar(double monto) throws SaldoInsuficienteException {
         if (monto > saldo) {
             throw new SaldoInsuficienteException(
@@ -20,9 +18,6 @@ public class Jugador {
         this.saldo -= monto;
     }
 
-    /**
-     * Añade la ganancia al saldo.
-     */
     public void cobrar(double ganancia) {
         this.saldo += ganancia;
     }
