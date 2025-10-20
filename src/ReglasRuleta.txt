@@ -1,0 +1,50 @@
+==================================================
+  BIENVENIDO A LA RULETA ARCOÍRIS 2-PELOTAS
+==================================================
+
+La Ruleta Arcoíris se juega con 50 casillas y 2 pelotas por tirada.
+
+--------------------------------------------------
+APARTADO I: LA RULETA CLÁSICA (50 CASILLAS)
+--------------------------------------------------
+
+El tablero consta de 50 casillas numeradas del 1 al 50, distribuidas en cinco colores.
+
+1. DISTRIBUCIÓN DE COLORES
+- Verde: 2 casillas (Especial)
+- Negro: 12 casillas
+- Rojo: 12 casillas
+- Azul: 12 casillas
+- Blanco: 12 casillas
+
+2. APUESTAS CLÁSICAS (Ganan si AL MENOS una pelota cumple la condición)
+   La ganancia base es solo por la pelota que acierta, aunque ambas caigan.
+
+| Tipo de Apuesta | Condición | Pago Base |
+|-----------------|-----------------------------------------------------------------|-----------|
+| Número Específico| La pelota cae en el número apostado (1 al 50). | 35x |
+| Calle / Línea | La pelota cae en cualquiera de los 3 números consecutivos apostados. | 11x |
+| Docena / Rango | La pelota cae en el rango de 12 números (ej: 1-12, 13-24, etc.). | 2x |
+| Color Clásico | La pelota cae en Rojo, Negro, Azul o Blanco. | 1x |
+| Par / Impar | La pelota cae en un número Par o Impar. | 1x |
+
+
+--------------------------------------------------
+APARTADO II: REGLAS ADICIONALES (2-PELOTAS)
+--------------------------------------------------
+
+Esta versión usa 2 pelotas por tirada, lo que habilita pagos por coincidencia.
+
+1. REGLA ESPECIAL: SORPRESA VERDE
+Si **una o ambas** pelotas caen en una casilla de color **VERDE**,
+TODOS los pagos (tanto clásicos como especiales) se **DUPLICAN**.
+
+2. APUESTAS ESPECIALES (Requieren que AMBAS pelotas cumplan la condición)
+   Estas apuestas usan multiplicadores altos porque la probabilidad de acierto es menor.
+
+| Tipo de Apuesta | Condición de las 2 Pelotas | Pago |
+|-----------------|-----------------------------------------------------------------|------|
+| Color Único | Las 2 pelotas caen exactamente en el mismo color (ej: Negro y Negro). | 5x |
+| Color Mixto | Las 2 caen en 2 colores ESPECÍFICOS diferentes (sin importar el orden). | 3x |
+| Color Cualquiera| **NOTA:** Esta apuesta especial es la única que gana si **AL MENOS una** pelota cae en el color elegido. | 2x |
+| Doble Coincidencia| Las 2 caen en 2 colores EXACTOS y en el **ORDEN** especificado. | 8x |
